@@ -1,0 +1,27 @@
+{
+  "enabled": true,
+  "name": "API Integration Validator",
+  "description": "Monitors backend API files, frontend source files, and configuration files to validate that frontend and backend remain properly connected with correct API calls after any changes",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "light/app.py",
+      "light/app_*.py",
+      "light/gradio_demo.py",
+      "light/gradio_demo_bg.py",
+      "light/gpt_recommendations.py",
+      "light/upscaler.py",
+      "spooky-relight-master-5c3ffe48-main/src/**/*.tsx",
+      "spooky-relight-master-5c3ffe48-main/src/**/*.ts",
+      "spooky-relight-master-5c3ffe48-main/vite.config.ts",
+      "light/.env",
+      "light/requirements.txt",
+      "spooky-relight-master-5c3ffe48-main/package.json"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Validate the integration between frontend and backend:\n\n1. Check that all API endpoints in the backend (Flask/Gradio apps) are properly defined and accessible\n2. Verify that frontend API calls match the backend endpoint URLs, methods, and expected payloads\n3. Confirm CORS configuration allows frontend-backend communication\n4. Validate that environment variables (API keys, URLs) are properly configured\n5. Check that request/response data structures match between frontend and backend\n6. Verify error handling exists for failed API calls\n7. Ensure any new features have corresponding API endpoints and frontend integration\n8. Test that the connection between the React frontend (port 5173) and Python backend (port 7860) is working\n\nReport any mismatches, missing endpoints, incorrect API calls, or configuration issues. Suggest fixes if problems are found."
+  }
+}

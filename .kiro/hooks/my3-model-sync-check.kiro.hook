@@ -1,0 +1,20 @@
+{
+  "enabled": true,
+  "name": "MY3 Model Sync Validator",
+  "description": "Monitors upload directory and model files to ensure my3 models are syncing properly and toggling correctly based on user uploads",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "light/uploads/*",
+      "light/models/*",
+      "light/gradio_demo.py",
+      "light/gradio_demo_bg.py",
+      "light/app*.py"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Check that my3 models (iclight_sd15_fc, iclight_sd15_fcon, iclight_sd15_fbc) are syncing correctly and toggling appropriately based on the user's uploaded input. Verify model loading, switching logic, and ensure the correct model is active for the current task. Review the upload handling code and model initialization to confirm proper synchronization."
+  }
+}

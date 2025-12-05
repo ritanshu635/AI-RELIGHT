@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IC-Light - Image Relighting</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0B0F19 0%, #1a1f2e 100%);
+            color: #E6E9EF;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            background: linear-gradient(135deg, #6C5CE7, #00D9FF);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .panel {
+            background: rgba(30, 35, 48, 0.8);
+            border-radius: 12px;
+            padding: 25px;
+            border: 1px solid #2D3548;
+        }
+
+        .panel h2 {
+            margin-bottom: 20px;
+            color: #00D9FF;
+        }
+
+        .upload-area {
+            border: 2px dashed #6C5CE7;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+
+        .upload-area:hover {
+            border-color: #00D9FF;
+            background: rgba(108, 92, 231, 0.1);
+        }
+
+        .upload-area.dragover {
+            border-color: #00D9FF;
+            background: rgba(0, 217, 255, 0.1);
+        }
+
+        #preview {
+            max-width: 100%;
+            max-height: 400px;
+            border-radius: 8px;
+            display: none;
+            margin: 20px auto;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #B8BCC8;
+            font-weight: 500;
+        }
+
+        input[type="text"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 12px;
+            background: #1E2330;
+            border: 1px solid #2D3548;
+            border-radius: 6px;
+            color: #E6E9EF;
+            font-size: 14px;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .button {
+            background: linear-gradient(135deg, #6C5CE7 0%, #5B4BC4 100%);
+            border: none;
+            color: white;
+            font-weight: 600;
+            padding: 14px 28px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(108, 92, 231, 0.3);
+            width: 100%;
+            font-size: 16px;
+        }
+
+        .button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(108, 92, 231, 0.4);
+        }
+
+        .button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .button.ai-btn {
+            background: linear-gradient(135deg, #00D9FF 0%, #0099CC 100%);
+            box-shadow: 0 4px 12px rgba(0, 217, 255, 0.3);
+            margin-bottom: 15px;
+        }
+
+        .button.ai-btn:hover:not(:disabled) {
+            box-shadow: 0 6px 20px rgba(0, 217, 255, 0.4);
+        }
+
+        .suggestions {
+            display: none;
+            margin-bottom: 15px;
+            background: rgba(0, 217, 255, 0.05);
+            border: 1px solid #00D9FF;
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .suggestions h3 {
+            color: #00D9FF;
+            font-size: 1em;
+            margin-bottom: 12px;
+        }
+
+        .suggestion-item {
+            background: #1E2330;
+            border: 2px solid #2D3548;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .suggestion-item:hover {
+            border-color: #00D9FF;
+            background: rgba(0, 217, 255, 0.1);
+            transform: translateX(5px);
+        }
+
+        .suggestion-item.selected {
+            border-color: #6C5CE7;
+            background: rgba(108, 92, 231, 0.2);
+        }
+
+        .suggestion-text {
+            font-size: 1.1em;
+            font-weight: 500;
+        }
+
+        .apply-btn {
+            background: linear-gradient(135deg, #6C5CE7 0%, #5B4BC4 100%);
+            border: none;
+            color: white;
+            padding: 8px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9em;
+            transition: all 0.2s;
+        }
+
+        .apply-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(108, 92, 231, 0.4);
+        }
+
+        .mood-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .mood-tag {
+            background: #1E2330;
+            border: 2px solid #2D3548;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9em;
+            user-select: none;
+        }
+
+        .mood-tag:hover {
+            border-color: #6C5CE7;
+            transform: translateY(-2px);
+        }
+
+        .mood-tag.selected {
+            background: linear-gradient(135deg, #6C5CE7 0%, #5B4BC4 100%);
+            border-color: #6C5CE7;
+            color: white;
+            box-shadow: 0 4px 12px rgba(108, 92, 231, 0.4);
+        }
+
+        .apply-all-btn {
+            background: linear-gradient(135deg, #00D9FF 0%, #0099CC 100%);
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1em;
+            width: 100%;
+            margin-top: 10px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(0, 217, 255, 0.3);
+        }
+
+        .apply-all-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 217, 255, 0.4);
+        }
+
+        .result-area {
+            text-align: center;
+        }
+
+        #result {
+            max-width: 100%;
+            border-radius: 12px;
+            border: 2px solid #2D3548;
+            display: none;
+            margin: 20px auto;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .status.info {
+            background: rgba(0, 217, 255, 0.1);
+            border: 1px solid #00D9FF;
+            color: #00D9FF;
+        }
+
+        .status.success {
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid #4CAF50;
+            color: #4CAF50;
+        }
+
+        .status.error {
+            background: rgba(244, 67, 54, 0.1);
+            border: 1px solid #F44336;
+            color: #F44336;
+        }
+
+        .progress {
+            width: 100%;
+            height: 6px;
+            background: #1E2330;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #6C5CE7, #00D9FF);
+            width: 0%;
+            transition: width 0.3s;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .download-btn {
+            display: none;
+            margin-top: 15px;
+        }
+
+        @media (max-width: 968px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌟 IC-Light - Image Relighting with Background</h1>
+        
+        <div class="main-grid">
+            <!-- Left Panel - Input -->
+            <div class="panel">
+                <h2>Upload & Configure</h2>
+                
+                <div class="upload-area" id="uploadArea">
+                    <p>📸 Click or drag MAIN image here</p>
+                    <p style="font-size: 0.9em; color: #B8BCC8; margin-top: 10px;">Supports JPG, PNG (max 50MB)</p>
+                </div>
+                <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                
+                <div class="upload-area" id="bgUploadArea" style="margin-top: 15px; border-color: #00D9FF;">
+                    <p>🖼️ Click or drag BACKGROUND image (Optional)</p>
+                    <p style="font-size: 0.9em; color: #B8BCC8; margin-top: 10px;">Leave empty for gradient lighting</p>
+                </div>
+                <input type="file" id="bgFileInput" accept="image/*" style="display: none;">
+                
+                <div id="previewContainer" style="position: relative; display: none;">
+                    <img id="preview" alt="Preview" style="display: block;">
+                </div>
+                
+                <div id="bgPreviewContainer" style="position: relative; display: none; margin-top: 15px;">
+                    <img id="bgPreview" alt="Background Preview" style="display: block; max-width: 100%; max-height: 200px; border-radius: 8px; margin: 10px auto;">
+                    <div id="lightPointer" style="
+                        position: absolute;
+                        width: 50px;
+                        height: 50px;
+                        background: radial-gradient(circle, #FFD700 0%, #FFA500 100%);
+                        border-radius: 50%;
+                        cursor: move;
+                        box-shadow: 0 0 30px rgba(255, 215, 0, 0.9), 0 0 60px rgba(255, 215, 0, 0.5);
+                        border: 3px solid rgba(255, 255, 255, 0.8);
+                        display: none;
+                        z-index: 10;
+                        user-select: none;
+                    ">
+                        <div style="
+                            position: absolute;
+                            top: 50%;
+                            left: 50%;
+                            transform: translate(-50%, -50%);
+                            font-size: 24px;
+                        ">💡</div>
+                    </div>
+                    <div id="directionLabel" style="
+                        position: absolute;
+                        top: 10px;
+                        right: 10px;
+                        background: rgba(0, 0, 0, 0.8);
+                        color: #FFD700;
+                        padding: 8px 16px;
+                        border-radius: 6px;
+                        font-weight: 600;
+                        display: none;
+                        z-index: 11;
+                    ">None</div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Select Mood/Style (Optional - helps AI understand your vision)</label>
+                    <div class="mood-tags" id="moodTags">
+                        <span class="mood-tag" data-mood="haunted">👻 Haunted</span>
+                        <span class="mood-tag" data-mood="adventure">🗺️ Adventure</span>
+                        <span class="mood-tag" data-mood="household">🏠 Household</span>
+                        <span class="mood-tag" data-mood="outdoor">🌲 Outdoor</span>
+                        <span class="mood-tag" data-mood="playful">🎨 Playful</span>
+                        <span class="mood-tag" data-mood="dramatic">🎭 Dramatic</span>
+                        <span class="mood-tag" data-mood="romantic">💕 Romantic</span>
+                        <span class="mood-tag" data-mood="mysterious">🔮 Mysterious</span>
+                        <span class="mood-tag" data-mood="cinematic">🎬 Cinematic</span>
+                    </div>
+                </div>
+                
+                <button class="button ai-btn" id="aiBtn" disabled>✨ Get AI Recommendations</button>
+                
+                <div class="suggestions" id="suggestions"></div>
+                
+                <div class="form-group">
+                    <label for="prompt">Lighting Prompt</label>
+                    <textarea id="prompt" placeholder="Type your lighting description or use AI recommendations...">beautiful lighting</textarea>
+                    <p style="font-size: 0.85em; color: #B8BCC8; margin-top: 5px;">💡 Type manually OR use AI recommendations above</p>
+                </div>
+                
+                <div class="form-group">
+                    <label for="lighting">Lighting Direction</label>
+                    <select id="lighting">
+                        <option value="None">None</option>
+                        <option value="Left Light">Left Light</option>
+                        <option value="Right Light">Right Light</option>
+                        <option value="Top Light">Top Light</option>
+                        <option value="Bottom Light">Bottom Light</option>
+                    </select>
+                </div>
+                
+                <button class="button" id="relightBtn" disabled>🎨 Relight Image</button>
+                
+                <div class="status" id="status"></div>
+                <div class="progress" id="progress">
+                    <div class="progress-bar" id="progressBar"></div>
+                </div>
+            </div>
+            
+            <!-- Right Panel - Output -->
+            <div class="panel">
+                <h2>Result</h2>
+                <div class="result-area">
+                    <p style="color: #B8BCC8; margin-top: 100px;">Your relit image will appear here</p>
+                    <img id="result" alt="Result">
+                    <button class="button download-btn" id="downloadBtn">💾 Download Image</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedFile = null;
+        let selectedBgFile = null;
+        let resultUrl = null;
+        let selectedMoods = [];
+        let aiSuggestions = [];
+        let isDragging = false;
+        let currentLightDirection = 'None';
+
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const preview = document.getElementById('preview');
+        const previewContainer = document.getElementById('previewContainer');
+        const bgUploadArea = document.getElementById('bgUploadArea');
+        const bgFileInput = document.getElementById('bgFileInput');
+        const bgPreview = document.getElementById('bgPreview');
+        const bgPreviewContainer = document.getElementById('bgPreviewContainer');
+        const lightPointer = document.getElementById('lightPointer');
+        const directionLabel = document.getElementById('directionLabel');
+        const aiBtn = document.getElementById('aiBtn');
+        const relightBtn = document.getElementById('relightBtn');
+        const suggestions = document.getElementById('suggestions');
+        const promptInput = document.getElementById('prompt');
+        const lightingSelect = document.getElementById('lighting');
+        const status = document.getElementById('status');
+        const progress = document.getElementById('progress');
+        const progressBar = document.getElementById('progressBar');
+        const result = document.getElementById('result');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const moodTags = document.querySelectorAll('.mood-tag');
+
+        // Main image upload
+        uploadArea.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) handleFile(file);
+        });
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file) handleFile(file);
+        });
+
+        // Background image upload
+        bgUploadArea.addEventListener('click', () => bgFileInput.click());
+        bgFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) handleBgFile(file);
+        });
+        bgUploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            bgUploadArea.classList.add('dragover');
+        });
+        bgUploadArea.addEventListener('dragleave', () => {
+            bgUploadArea.classList.remove('dragover');
+        });
+        bgUploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            bgUploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file) handleBgFile(file);
+        });
+
+        // Mood tag selection
+        moodTags.forEach(tag => {
+            tag.addEventListener('click', () => {
+                const mood = tag.dataset.mood;
+                if (tag.classList.contains('selected')) {
+                    tag.classList.remove('selected');
+                    selectedMoods = selectedMoods.filter(m => m !== mood);
+                } else {
+                    tag.classList.add('selected');
+                    selectedMoods.push(mood);
+                }
+            });
+        });
+
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                showStatus('Please select an image file', 'error');
+                return;
+            }
+
+            selectedFile = file;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                preview.src = e.target.result;
+                preview.style.display = 'block';
+                previewContainer.style.display = 'block';
+                
+                // Show and position light pointer in center
+                setTimeout(() => {
+                    const rect = preview.getBoundingClientRect();
+                    const containerRect = previewContainer.getBoundingClientRect();
+                    lightPointer.style.left = (rect.width / 2 - 25) + 'px';
+                    lightPointer.style.top = (rect.height / 2 - 25) + 'px';
+                    lightPointer.style.display = 'block';
+                    directionLabel.style.display = 'block';
+                    updateLightDirection(rect.width / 2, rect.height / 2, rect.width, rect.height);
+                }, 100);
+                
+                aiBtn.disabled = false;
+                relightBtn.disabled = false;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function handleBgFile(file) {
+            if (!file.type.startsWith('image/')) {
+                showStatus('Please select an image file for background', 'error');
+                return;
+            }
+
+            selectedBgFile = file;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                bgPreview.src = e.target.result;
+                bgPreview.style.display = 'block';
+                bgPreviewContainer.style.display = 'block';
+                showStatus('✅ Background image loaded! Will be used for lighting harmonization.', 'success');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Draggable light pointer functionality
+        lightPointer.addEventListener('mousedown', startDrag);
+        lightPointer.addEventListener('touchstart', startDrag);
+
+        function startDrag(e) {
+            isDragging = true;
+            e.preventDefault();
+        }
+
+        document.addEventListener('mousemove', onDrag);
+        document.addEventListener('touchmove', onDrag);
+
+        function onDrag(e) {
+            if (!isDragging) return;
+            
+            e.preventDefault();
+            const touch = e.touches ? e.touches[0] : e;
+            
+            const containerRect = previewContainer.getBoundingClientRect();
+            const previewRect = preview.getBoundingClientRect();
+            
+            let x = touch.clientX - previewRect.left - 25;
+            let y = touch.clientY - previewRect.top - 25;
+            
+            // Constrain to image bounds
+            x = Math.max(0, Math.min(x, previewRect.width - 50));
+            y = Math.max(0, Math.min(y, previewRect.height - 50));
+            
+            lightPointer.style.left = x + 'px';
+            lightPointer.style.top = y + 'px';
+            
+            // Update direction based on position
+            updateLightDirection(x + 25, y + 25, previewRect.width, previewRect.height);
+        }
+
+        document.addEventListener('mouseup', stopDrag);
+        document.addEventListener('touchend', stopDrag);
+
+        function stopDrag() {
+            isDragging = false;
+        }
+
+        function updateLightDirection(x, y, width, height) {
+            const centerX = width / 2;
+            const centerY = height / 2;
+            
+            const relativeX = (x - centerX) / centerX; // -1 to 1
+            const relativeY = (y - centerY) / centerY; // -1 to 1
+            
+            let direction = 'None';
+            
+            // Determine direction based on position
+            // Use threshold of 0.3 to create a dead zone in center
+            if (Math.abs(relativeX) > Math.abs(relativeY)) {
+                // Horizontal direction dominates
+                if (relativeX < -0.3) {
+                    direction = 'Left Light';
+                } else if (relativeX > 0.3) {
+                    direction = 'Right Light';
+                }
+            } else {
+                // Vertical direction dominates
+                if (relativeY < -0.3) {
+                    direction = 'Top Light';
+                } else if (relativeY > 0.3) {
+                    direction = 'Bottom Light';
+                }
+            }
+            
+            currentLightDirection = direction;
+            directionLabel.textContent = direction;
+            lightingSelect.value = direction;
+        }
+
+        // Sync dropdown with draggable
+        lightingSelect.addEventListener('change', (e) => {
+            currentLightDirection = e.target.value;
+            directionLabel.textContent = e.target.value;
+            
+            if (!preview.src) return;
+            
+            // Move pointer to corresponding position
+            const rect = preview.getBoundingClientRect();
+            const centerX = rect.width / 2;
+            const centerY = rect.height / 2;
+            
+            let newX = centerX - 25;
+            let newY = centerY - 25;
+            
+            switch(e.target.value) {
+                case 'Left Light':
+                    newX = centerX * 0.2;
+                    break;
+                case 'Right Light':
+                    newX = centerX * 1.6;
+                    break;
+                case 'Top Light':
+                    newY = centerY * 0.2;
+                    break;
+                case 'Bottom Light':
+                    newY = centerY * 1.6;
+                    break;
+                case 'None':
+                default:
+                    newX = centerX - 25;
+                    newY = centerY - 25;
+                    break;
+            }
+            
+            lightPointer.style.left = newX + 'px';
+            lightPointer.style.top = newY + 'px';
+        });
+
+        // AI Recommendations
+        aiBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            aiBtn.disabled = true;
+            const moodText = selectedMoods.length > 0 ? ` (Moods: ${selectedMoods.join(', ')})` : '';
+            showStatus('Getting AI recommendations' + moodText + '...', 'info');
+
+            const formData = new FormData();
+            formData.append('image', selectedFile);
+            formData.append('moods', selectedMoods.join(','));
+
+            try {
+                const response = await fetch('/api/recommendations', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    aiSuggestions = data.suggestions;
+                    showSuggestions(data.suggestions);
+                    showStatus('✨ AI recommendations ready! Click "Apply All & Relight" to use them.', 'success');
+                } else {
+                    showStatus('Error: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showStatus('Error getting recommendations: ' + error.message, 'error');
+            } finally {
+                aiBtn.disabled = false;
+            }
+        });
+
+        function showSuggestions(items) {
+            suggestions.innerHTML = '<h3>🎨 AI Lighting Suggestions</h3>';
+            suggestions.innerHTML += '<p style="font-size: 0.9em; color: #B8BCC8; margin-bottom: 15px;">Based on your image' + 
+                (selectedMoods.length > 0 ? ' and selected moods (' + selectedMoods.join(', ') + ')' : '') + 
+                ':</p>';
+            
+            items.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'suggestion-item';
+                div.style.cursor = 'default';
+                
+                const textSpan = document.createElement('span');
+                textSpan.className = 'suggestion-text';
+                textSpan.textContent = `${index + 1}. ${item}`;
+                
+                div.appendChild(textSpan);
+                suggestions.appendChild(div);
+            });
+            
+            // Add "Apply All & Relight" button
+            const applyAllBtn = document.createElement('button');
+            applyAllBtn.className = 'apply-all-btn';
+            applyAllBtn.textContent = '✨ Apply All & Relight';
+            applyAllBtn.onclick = applyAllAndRelight;
+            
+            suggestions.appendChild(applyAllBtn);
+            suggestions.style.display = 'block';
+        }
+
+        async function applyAllAndRelight() {
+            if (aiSuggestions.length === 0) return;
+            
+            // Combine all suggestions with commas
+            const combinedPrompt = aiSuggestions.join(', ');
+            promptInput.value = combinedPrompt;
+            
+            showStatus(`Applied all suggestions: "${combinedPrompt}" - Starting relight...`, 'info');
+            
+            // Wait a moment for user to see
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Trigger relight automatically
+            relightBtn.click();
+        }
+
+        // Relight
+        relightBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            relightBtn.disabled = true;
+            aiBtn.disabled = true;
+            result.style.display = 'none';
+            downloadBtn.style.display = 'none';
+
+            showStatus('Processing... This will take 20-30 seconds. Please wait!', 'info');
+            progress.style.display = 'block';
+            
+            // Simulate progress
+            let prog = 0;
+            const progressInterval = setInterval(() => {
+                prog += 2;
+                if (prog <= 90) {
+                    progressBar.style.width = prog + '%';
+                }
+            }, 600);
+
+            const formData = new FormData();
+            formData.append('image', selectedFile);
+            if (selectedBgFile) {
+                formData.append('background', selectedBgFile);
+            }
+            formData.append('prompt', promptInput.value);
+            formData.append('lighting', currentLightDirection);
+
+            try {
+                const response = await fetch('/api/relight', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                clearInterval(progressInterval);
+                progressBar.style.width = '100%';
+
+                const data = await response.json();
+
+                if (data.success) {
+                    resultUrl = data.output_url;
+                    result.src = resultUrl + '?t=' + Date.now();
+                    result.style.display = 'block';
+                    downloadBtn.style.display = 'block';
+                    showStatus('✅ Image processed successfully!', 'success');
+                } else {
+                    showStatus('Error: ' + data.error, 'error');
+                }
+            } catch (error) {
+                clearInterval(progressInterval);
+                showStatus('Error processing image: ' + error.message, 'error');
+            } finally {
+                setTimeout(() => {
+                    progress.style.display = 'none';
+                    progressBar.style.width = '0%';
+                }, 1000);
+                relightBtn.disabled = false;
+                aiBtn.disabled = false;
+            }
+        });
+
+        // Download
+        downloadBtn.addEventListener('click', () => {
+            if (resultUrl) {
+                const a = document.createElement('a');
+                a.href = resultUrl;
+                a.download = 'relit_image.png';
+                a.click();
+            }
+        });
+
+        function showStatus(message, type) {
+            status.textContent = message;
+            status.className = 'status ' + type;
+            status.style.display = 'block';
+            
+            if (type === 'success' || type === 'error') {
+                setTimeout(() => {
+                    status.style.display = 'none';
+                }, 5000);
+            }
+        }
+    </script>
+</body>
+</html>
